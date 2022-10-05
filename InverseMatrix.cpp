@@ -1,5 +1,7 @@
 #include <bits/stdc++.h>
+
 using namespace std ;
+
 int n ;
 double *matriz_a;
 double *x ;
@@ -74,6 +76,16 @@ void print_matrix ( double *a ){
         }
         cout<<endl ;
     }
+}
+
+double matrix_diff ( double *a , double *b ){
+    double ans = 0;
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j ++ ){
+            ans += abs(a[i * n + j] - b[i * n + j]);
+        }
+    }
+    return ans;
 
 }
 
@@ -84,15 +96,36 @@ void calculation_inverse ( ){
     resultado = (double *)malloc(n * n * sizeof(double));
     double *resultado1 ;
     resultado1 = (double *)malloc(n * n * sizeof(double));
-
-    for ( int i = 0 ; i < 100 ; i++ ){
+    double *resultado2 ;
+    resultado2 = (double *)malloc(n * n * sizeof(double));
+    memset(resultado2, 0, n * n * sizeof(double));
+    double ans = +INT_MAX;
+    int i = 0;
+    while (true){
+        i++;
         multiplication_matrix ( x , matriz_a , resultado ) ;
         multiplication_matrix ( resultado , x , resultado1 ) ;
         multiplication_value ( x , 2.0 ) ;
         res_matrix ( x , resultado1 ) ;
-        multiplication_matrix ( x , matriz_a , resultado );
-        print_matrix ( resultado ) ;
+//        multiplication_matrix ( x , matriz_a , resultado );
+//        print_matrix ( resultado ) ;
+
+        if(matrix_diff(x, resultado2)<1e-10){
+            break;
+        }
+        memcpy(resultado2, x, n * n * sizeof(double));
     }
+    cout << endl;
+    print_matrix ( x ) ;
+    cout << endl;
+    multiplication_matrix ( x , matriz_a , resultado );
+    print_matrix ( resultado ) ;
+    cout << "i = " << i << endl;
+    free(x);
+    free(matriz_a);
+    free(resultado);
+    free(resultado1);
+    free(resultado2);
 }
 
 
