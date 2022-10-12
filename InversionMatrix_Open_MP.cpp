@@ -1,4 +1,6 @@
+%%writefile inv.cpp
 #include <bits/stdc++.h>
+#include <omp.h>
 
 #define MAX_THREADS 8
 using namespace std ;
@@ -106,9 +108,11 @@ void calculation_inverse ( ){
 
     while (true){
         i++;
-        for ( int i = 0 ; i < MAX_THREADS ; i++ ){
-            calculate ( i , resultado , resultado1 ) ;
-        }
+         #pragma omp parallel num_threads(MAX_THREADS)
+         {
+             int id = omp_get_thread_num();
+            calculate ( id , resultado , resultado1 ) ;
+         }
         memcpy(x, resultado, n * n * sizeof(double));
 
         if(matrix_diff(x, resultado2)<1e-10){
@@ -134,6 +138,8 @@ void calculation_inverse ( ){
 
 
 int main ( ){
+    freopen ( "input.txt" , "r" , stdin ) ; 
+    freopen ( "output.txt" , "w" , stdout ) ;  
     calculation_inverse ( ) ;
     return 0 ;
 
