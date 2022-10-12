@@ -1,12 +1,12 @@
 #include <bits/stdc++.h>
 #include <omp.h>
 
-#define MAX_THREADS 8
 using namespace std ;
 
 int n ;
 double *matriz_a;
 double *x ;
+int hilos;
 
 void readMatrix(){
     cin >> n;
@@ -43,7 +43,7 @@ void init_x ( ){
 }
 
 void calculate ( int hilo , double *resultado , double *resultado1 ){
-    for ( int i = hilo ; i < n ; i+=MAX_THREADS ){
+    for ( int i = hilo ; i < n ; i+=hilos ){
         for ( int j = 0 ; j < n ; j++ ){
             resultado1[ i * n + j ] = 0 ;
             for ( int k = 0 ; k < n ; k++ ){
@@ -107,14 +107,14 @@ void calculation_inverse ( ){
 
     while (true){
         i++;
-         #pragma omp parallel num_threads(MAX_THREADS)
-         {
-             int id = omp_get_thread_num();
-            calculate ( id , resultado , resultado1 ) ;
-         }
+	#pragma omp parallel num_threads(hilos)
+	{
+	 	int id = omp_get_thread_num();
+		calculate ( id , resultado , resultado1 ) ;
+	}
         memcpy(x, resultado, n * n * sizeof(double));
 
-        if(matrix_diff(x, resultado2)<1e-10){
+        if(matrix_diff(x, resultado2)<1e-10 || i > 15){
             break;
         }
         memcpy(resultado2, x, n * n * sizeof(double));
@@ -136,7 +136,15 @@ void calculation_inverse ( ){
 
 
 
-int main ( ){
+int main (int argc, char *argv[] ){
+	ios_base::sync_with_stdio ( false ) ; 
+	cin.tie ( 0 ) ;
+	cout.tie ( 0 ) ; 
+	if(argc != 2){
+		cout << "Entrada erronea\n";
+		return 1;
+	}
+	hilos = atoi(argv[1]); 
     freopen ( "input.txt" , "r" , stdin ) ; 
     freopen ( "output.txt" , "w" , stdout ) ;  
     calculation_inverse ( ) ;
