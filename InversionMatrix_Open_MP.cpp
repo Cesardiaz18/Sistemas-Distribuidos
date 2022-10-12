@@ -1,4 +1,3 @@
-%%writefile inv.cpp
 #include <bits/stdc++.h>
 #include <omp.h>
 
