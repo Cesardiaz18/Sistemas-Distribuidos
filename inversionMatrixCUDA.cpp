@@ -184,6 +184,7 @@ int calcInverse()
     }
     double *x = init_x(matrix);
     int matrix_size = (n * n) * sizeof(double);
+    double *resultado = (double *)malloc(n * n * sizeof(double));
 
     double *cudaM;
     err = cudaMalloc((void **)&cudaM, matrix_size);
@@ -242,6 +243,8 @@ int calcInverse()
         inverseMatrixP3<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
     }
 
+    inverseMatrixP1<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
+
     err = cudaGetLastError();
 
     if (err != cudaSuccess)
@@ -258,6 +261,12 @@ int calcInverse()
 
     printf("Kernel finalizado\n");
     err = cudaMemcpy(x, cudaX, matrix_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy to device solution matrix(error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    err = cudaMemcpy(resultado, cudaR1, matrix_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy to device solution matrix(error code %s)!\n", cudaGetErrorString(err));
@@ -294,8 +303,6 @@ int calcInverse()
     cout << endl;
     print_matrix(x);
     cout << endl;
-    double *resultado = (double *)malloc(n * n * sizeof(double));
-    multiplication_matrix(x, matrix, resultado);
     print_matrix(resultado);
     free(resultado);
     free(matrix);
