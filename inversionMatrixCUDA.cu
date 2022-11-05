@@ -1,5 +1,6 @@
-#include <bits/stdc++.h>
+#include <iostream>
 #include <cuda_runtime.h>
+#include <chrono>
 #define MAX_DIM_ROW 1024
 #define REPS 40
 
@@ -236,11 +237,39 @@ int calcInverse()
     printf("Launching kernel %d, %d \n", blocks, threads);
 
     auto start = chrono::high_resolution_clock::now();
+
     for (int rep = 0; rep < REPS; rep++)
     {
         inverseMatrixP1<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
+        err = cudaGetLastError();
+
+        if (err != cudaSuccess)
+        {
+            fprintf(stderr, "Failed to launch vectorAdd kernel (error code %s)!\n", cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
+
+        cudaDeviceSynchronize();
         inverseMatrixP2<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
+        err = cudaGetLastError();
+
+        if (err != cudaSuccess)
+        {
+            fprintf(stderr, "Failed to launch vectorAdd kernel (error code %s)!\n", cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
+
+        cudaDeviceSynchronize();
         inverseMatrixP3<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
+        err = cudaGetLastError();
+
+        if (err != cudaSuccess)
+        {
+            fprintf(stderr, "Failed to launch vectorAdd kernel (error code %s)!\n", cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
+
+        cudaDeviceSynchronize();
     }
 
     inverseMatrixP1<<<blocks, threads>>>(cudaM, cudaX, cudaR1, cudaR2, cu_n);
@@ -320,7 +349,7 @@ int calcInverse()
 
 int main(int argc, char *argv[])
 {
-    freopen("input.txt", "r", stdin);
+    freopen("input 1000.txt", "r", stdin);
     freopen("output.txt", "w", stdout);
     if (argc != 3)
     {
