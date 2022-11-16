@@ -122,7 +122,6 @@ int main(int argc, char *argv[]){
 
 
     for ( int cont = 0 ; cont < 50 ; cont++ ){
-        print_matrix ( matriz_a ) ;
         calculate ( iam , resultado , resultado1 ) ;
         if (iam != root){
             for ( int i = iam ; i < n ; i += tasks){
@@ -130,16 +129,22 @@ int main(int argc, char *argv[]){
             }
         }
         else{
+	    for ( int i = root ; i < n ; i += tasks ) {
+		for ( int j = 0 ; j < n ; j++ ){
+		   x[i*n+j] = resultado [ i * n + j ] ;
+		}
+	    }
             for ( int i = 0 ; i < n ; i++ ){
                 int pos = i % tasks ;
-                if ( pos != root ){
+        	
+	        if ( pos != root ){
                     MPI_Recv( x + ( i * n ) , n , MPI_DOUBLE , pos , tag , MPI_COMM_WORLD , &status );
                 }
+	
             }
-	    print_matrix(x);
-	    cout<<endl;	
-            MPI_Bcast( x , n*n , MPI_DOUBLE , root , MPI_COMM_WORLD );
         }
+        MPI_Bcast( x , n*n , MPI_DOUBLE , root , MPI_COMM_WORLD );
+
     }
 
     if (iam == root){
