@@ -9,6 +9,8 @@ using namespace std;
 int blocks;
 int threads;
 int n;
+double max_column;
+double max_fila;
 
 __global__ void inverseMatrixP1(double *M, double *X, double *R1, double *R2, int DIM)
 {
@@ -103,10 +105,24 @@ __global__ void inverseMatrixP3(double *M, double *X, double *R1, double *R2, in
     __syncthreads();
 }
 
-double *init_x(double *m)
+__global__ void inverseMatrixP4(double *M, double *X, double maxC, double maxR, int DIM)
 {
-    double max_column = -INT_MAX;
-    double max_fila = -INT_MAX;
+    __shared__ double row[MAX_DIM_ROW];
+    for (int d = blockIdx.x; d < DIM; d += gridDim.x)
+    {
+        // Se sincronizan los hilos
+        __syncthreads();
+        for (int col = threadIdx.x; col < DIM; col += blockDim.x)
+        {
+            *(X + d * DIM + col) = *(M + col * DIM + d) / (maxC * maxR);
+        }
+    }
+}
+
+void init_x(double *m)
+{
+    max_column = -INT_MAX;
+    max_fila = -INT_MAX;
     for (int i = 0; i < n; i++)
     {
         double column = 0;
@@ -119,15 +135,6 @@ double *init_x(double *m)
         max_column = max(max_column, column);
         max_fila = max(max_fila, fila);
     }
-    double *x = (double *)malloc(n * n * sizeof(double));
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            x[i * n + j] = m[j * n + i] / (max_column * max_fila);
-        }
-    }
-    return x;
 }
 void print_matrix(double *a)
 {
@@ -183,7 +190,8 @@ int calcInverse()
             cin >> matrix[i * n + j];
         }
     }
-    double *x = init_x(matrix);
+    auto start = chrono::high_resolution_clock::now();
+    init_x(matrix);
     int matrix_size = (n * n) * sizeof(double);
     double *resultado = (double *)malloc(n * n * sizeof(double));
 
@@ -226,17 +234,19 @@ int calcInverse()
         exit(EXIT_FAILURE);
     }
 
-    err = cudaMemcpy(cudaX, x, matrix_size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy to device matrix A(error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
     const int cu_n = n;
     printf("Launching kernel %d, %d \n", blocks, threads);
 
-    auto start = chrono::high_resolution_clock::now();
+    inverseMatrixP4<<<blocks, threads>>>(cudaM, cudaX, max_column, max_fila, cu_n);
+    err = cudaGetLastError();
+
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch vectorAdd kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    cudaDeviceSynchronize();
 
     for (int rep = 0; rep < REPS; rep++)
     {
@@ -289,7 +299,7 @@ int calcInverse()
     cout << "MatrixMult elapsed time is " << int_s.count() / (float)1000000 << " seconds " << endl;
 
     printf("Kernel finalizado\n");
-    err = cudaMemcpy(x, cudaX, matrix_size, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(matrix, cudaX, matrix_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy to device solution matrix(error code %s)!\n", cudaGetErrorString(err));
@@ -330,12 +340,11 @@ int calcInverse()
         exit(EXIT_FAILURE);
     }
     cout << endl;
-    print_matrix(x);
+    print_matrix(matrix);
     cout << endl;
     print_matrix(resultado);
     free(resultado);
     free(matrix);
-    free(x);
 
     err = cudaDeviceReset();
     if (err != cudaSuccess)

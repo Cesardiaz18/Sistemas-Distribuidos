@@ -9,6 +9,7 @@ int n;
 double *matriz_a;
 double *x;
 int hilos;
+double reps = 0;
 
 void readMatrix()
 {
@@ -20,6 +21,17 @@ void readMatrix()
         for (int j = 0; j < n; ++j)
         {
             cin >> matriz_a[i * n + j];
+        }
+    }
+}
+
+void createMatrix()
+{
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            *(matriz_a + i * n + j) = rand() % 1000;
         }
     }
 }
@@ -114,9 +126,8 @@ void multiplication_matrix(double *a, double *b, double *resultado)
 
 void calculation_inverse()
 {
-
-    readMatrix();
     auto start = chrono::high_resolution_clock::now();
+
     init_x();
 
     double *resultado;
@@ -124,7 +135,8 @@ void calculation_inverse()
     double *resultado1;
     resultado1 = (double *)malloc(n * n * sizeof(double));
     double ans = +INT_MAX;
-    for (int i = 0; i < REPS; i++)
+
+    for (int k = 0; k < REPS; k++)
     {
 #pragma omp parallel num_threads(hilos)
         {
@@ -134,18 +146,16 @@ void calculation_inverse()
         memcpy(x, resultado, n * n * sizeof(double));
     }
 
-    auto end = chrono::high_resolution_clock::now();
-    auto int_s = chrono::duration_cast<chrono::microseconds>(end - start);
-    fprintf(stderr, "Tiempo de ejecucion: %.20f segunod", int_s.count() / 1000000.0);
-    cout << endl;
-    print_matrix(x);
-    cout << endl;
-    multiplication_matrix(x, matriz_a, resultado);
-    print_matrix(resultado);
-    free(x);
-    free(matriz_a);
+    // cout << endl;
+    // print_matrix ( x ) ;
+    // cout << endl;
+    // multiplication_matrix ( x , matriz_a , resultado );
+    // print_matrix ( resultado ) ;
     free(resultado);
     free(resultado1);
+    auto end = chrono::high_resolution_clock::now();
+    auto int_s = chrono::duration_cast<chrono::microseconds>(end - start);
+    reps = int_s.count() / 1000000.0;
 }
 
 int main(int argc, char *argv[])
@@ -159,8 +169,28 @@ int main(int argc, char *argv[])
         return 1;
     }
     hilos = atoi(argv[1]);
-    freopen("input 1000.txt", "r", stdin);
-    freopen("outputOMP.txt", "w", stdout);
-    calculation_inverse();
+    n = 1000;
+    matriz_a = (double *)malloc(n * n * sizeof(double));
+    x = (double *)malloc(n * n * sizeof(double));
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    int a[] = {5, 10, 50, 100, 200, 500, 1000};
+    for (int i = 0; i < 7; i++)
+    {
+        double sum = 0;
+        n = a[i];
+        int r = n > 500 ? 0 : 10;
+        for (int j = 0; j < r; j++)
+        {
+            createMatrix();
+            calculation_inverse();
+            sum += reps;
+            reps = 0;
+        }
+        cout << setprecision(20) << fixed << a[i] << ";" << sum / r << endl;
+        fprintf(stderr, "%d\n", a[i]);
+    }
+    free(x);
+    free(matriz_a);
     return 0;
 }

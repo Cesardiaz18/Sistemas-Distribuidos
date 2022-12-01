@@ -48,9 +48,24 @@ void init_x()
     }
 }
 
+void print_matrix(double *a)
+{
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            cout << a[i * n + j] << " ";
+        }
+        cout << endl;
+    }
+}
+
 void calculate(int hilo, double *resultado, double *resultado1)
 {
-    for (int i = hilo; i < n; i += tasks)
+    int m = n % tasks;
+    int start = (n / tasks) * hilo + min(hilo, m);
+    int size = (n / tasks) + (hilo < m);
+    for (int i = start; i < start + size; i++)
     {
         for (int j = 0; j < n; j++)
         {
@@ -69,17 +84,15 @@ void calculate(int hilo, double *resultado, double *resultado1)
             }
         }
     }
-}
+    MPI_Barrier(MPI_COMM_WORLD);
 
-void print_matrix(double *a)
-{
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < tasks; i++)
     {
-        for (int j = 0; j < n; j++)
-        {
-            cout << a[i * n + j] << " ";
-        }
-        cout << endl;
+        start = (n / tasks) * i + min(i, m);
+        size = (n / tasks) + (i < m);
+        // MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Bcast(resultado + start * n, n * size, MPI_DOUBLE, i, MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
@@ -109,8 +122,6 @@ int main(int argc, char *argv[])
 
     MPI_Init(&argc, &argv);
 
-    auto start = chrono::high_resolution_clock::now();
-
     // Se obtiene la cantidad de procesos
     MPI_Comm_size(MPI_COMM_WORLD, &tasks);
 
@@ -127,6 +138,10 @@ int main(int argc, char *argv[])
     if (iam == root)
     {
         readMatrix();
+    }
+    auto start = chrono::high_resolution_clock::now();
+    if (iam == root)
+    {
         init_x();
     }
 
@@ -139,37 +154,10 @@ int main(int argc, char *argv[])
     double *resultado1;
 
     resultado1 = (double *)malloc(n * n * sizeof(double));
-
     for (int cont = 0; cont < 40; cont++)
     {
         calculate(iam, resultado, resultado1);
-        if (iam != root)
-        {
-            for (int i = iam; i < n; i += tasks)
-            {
-                MPI_Send(resultado + (i * n), n, MPI_DOUBLE, root, tag, MPI_COMM_WORLD);
-            }
-        }
-        else
-        {
-            for (int i = root; i < n; i += tasks)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    x[i * n + j] = resultado[i * n + j];
-                }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                int pos = i % tasks;
-
-                if (pos != root)
-                {
-                    MPI_Recv(x + (i * n), n, MPI_DOUBLE, pos, tag, MPI_COMM_WORLD, &status);
-                }
-            }
-        }
-        MPI_Bcast(x, n * n, MPI_DOUBLE, root, MPI_COMM_WORLD);
+        memcpy(x, resultado, n * n * sizeof(double));
     }
 
     if (iam == root)
@@ -187,19 +175,11 @@ int main(int argc, char *argv[])
         multiplication_matrix(x, matriz_a, resultado);
         print_matrix(resultado);
         cout << endl;
-        free(x);
-        free(matriz_a);
-        free(resultado);
-        free(resultado1);
     }
-    else
-    {
-        free(x);
-        free(matriz_a);
-        free(resultado);
-        free(resultado1);
-    }
-
+    free(x);
+    free(matriz_a);
+    free(resultado);
+    free(resultado1);
     MPI_Finalize();
     return 0;
 }
